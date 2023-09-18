@@ -1,12 +1,12 @@
-#[allow(unused_imports)]
-use std::sync::Arc;
-use image::{ColorType, DynamicImage, GenericImageView, ImageError};
 use image::codecs::bmp::BmpEncoder;
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
+use image::{ColorType, DynamicImage, GenericImageView, ImageError};
+#[allow(unused_imports)]
+use std::sync::Arc;
 
-use crate::{Kind, StreamDeckError};
 use crate::info::{ImageMirroring, ImageMode, ImageRotation};
+use crate::{Kind, StreamDeckError};
 
 /// Converts image into image data depending on provided kind of device
 pub fn convert_image(kind: Kind, image: DynamicImage) -> Result<Vec<u8>, ImageError> {
@@ -22,7 +22,7 @@ pub fn convert_image(kind: Kind, image: DynamicImage) -> Result<Vec<u8>, ImageEr
         ImageRotation::Rot0 => image,
         ImageRotation::Rot90 => image.rotate90(),
         ImageRotation::Rot180 => image.rotate180(),
-        ImageRotation::Rot270 => image.rotate270()
+        ImageRotation::Rot270 => image.rotate270(),
     };
 
     // Applying mirroring
@@ -30,7 +30,7 @@ pub fn convert_image(kind: Kind, image: DynamicImage) -> Result<Vec<u8>, ImageEr
         ImageMirroring::None => image,
         ImageMirroring::X => image.fliph(),
         ImageMirroring::Y => image.flipv(),
-        ImageMirroring::Both => image.fliph().flipv()
+        ImageMirroring::Both => image.fliph().flipv(),
     };
 
     let image_data = image.into_rgb8().to_vec();
@@ -56,8 +56,13 @@ pub fn convert_image(kind: Kind, image: DynamicImage) -> Result<Vec<u8>, ImageEr
 /// Converts image into image data depending on provided kind of device, can be safely ran inside [multi_thread](tokio::runtime::Builder::new_multi_thread) runtime
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-pub fn convert_image_async(kind: Kind, image: DynamicImage) -> Result<Vec<u8>, crate::StreamDeckError> {
-    Ok(tokio::task::block_in_place(move || convert_image(kind, image))?)
+pub fn convert_image_async(
+    kind: Kind,
+    image: DynamicImage,
+) -> Result<Vec<u8>, crate::StreamDeckError> {
+    Ok(tokio::task::block_in_place(move || {
+        convert_image(kind, image)
+    })?)
 }
 
 /// Rect to be used when trying to send image to lcd screen
@@ -69,7 +74,7 @@ pub struct ImageRect {
     pub h: u16,
 
     /// Data of the image row by row as RGB
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 impl ImageRect {
@@ -90,10 +95,17 @@ impl ImageRect {
         })
     }
 
+    /// Constructs an ImageRect from a image buffer already formatted for the device
+    pub fn from_device_image(w: u16, h: u16, data: Vec<u8>) -> Self {
+        ImageRect { w, h, data }
+    }
+
     /// Converts image to image rect, can be safely ran inside [multi_thread](tokio::runtime::Builder::new_multi_thread) runtime
     #[cfg(feature = "async")]
     #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
     pub fn from_image_async(image: DynamicImage) -> Result<ImageRect, StreamDeckError> {
-        Ok(tokio::task::block_in_place(move || ImageRect::from_image(image))?)
+        Ok(tokio::task::block_in_place(move || {
+            ImageRect::from_image(image)
+        })?)
     }
 }
