@@ -52,7 +52,7 @@ pub fn flip_key_index(kind: &Kind, key: u8) -> u8 {
 }
 
 /// Reads button states, empty vector if no data
-pub fn read_button_states(kind: &Kind, states: &Vec<u8>) -> Vec<bool> {
+pub fn read_button_states(kind: &Kind, states: &[u8]) -> Vec<bool> {
     if states[0] == 0 {
         return vec![]
     }
@@ -85,7 +85,7 @@ pub fn read_button_states(kind: &Kind, states: &Vec<u8>) -> Vec<bool> {
 }
 
 /// Reads lcd screen input
-pub fn read_lcd_input(data: &Vec<u8>) -> Result<StreamDeckInput, StreamDeckError> {
+pub fn read_lcd_input(data: &[u8]) -> Result<StreamDeckInput, StreamDeckError> {
     let start_x = u16::from_le_bytes([data[6], data[7]]);
     let start_y = u16::from_le_bytes([data[8], data[9]]);
 
@@ -108,7 +108,7 @@ pub fn read_lcd_input(data: &Vec<u8>) -> Result<StreamDeckInput, StreamDeckError
 }
 
 /// Reads encoder input
-pub fn read_encoder_input(kind: &Kind, data: &Vec<u8>) -> Result<StreamDeckInput, StreamDeckError> {
+pub fn read_encoder_input(kind: &Kind, data: &[u8]) -> Result<StreamDeckInput, StreamDeckError> {
     match &data[4] {
         0x0 => Ok(StreamDeckInput::EncoderStateChange(
             data[5..5 + kind.encoder_count() as usize].iter()

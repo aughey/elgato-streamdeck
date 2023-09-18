@@ -131,10 +131,7 @@ impl Kind {
 
     /// Tells if the Stream Deck kind has a screen
     pub fn is_visual(&self) -> bool {
-        match self {
-            Kind::Pedal => false,
-            _ => true,
-        }
+        !matches!(self,Kind::Pedal)
     }
 
     /// Key layout of the Stream Deck kind as (rows, columns)

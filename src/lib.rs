@@ -12,19 +12,22 @@ use std::fmt::{Display, Formatter};
 use std::str::Utf8Error;
 use std::time::Duration;
 
+use crate::images::{convert_image, ImageRect};
 use hidapi::{HidApi, HidDevice, HidError, HidResult};
 use image::{DynamicImage, ImageError};
-use crate::images::{convert_image, ImageRect};
 
-use crate::info::{ELGATO_VENDOR_ID, Kind};
-use crate::util::{extract_str, flip_key_index, get_feature_report, read_button_states, read_data, read_encoder_input, read_lcd_input, send_feature_report, write_data};
+use crate::info::{Kind, ELGATO_VENDOR_ID};
+use crate::util::{
+    extract_str, flip_key_index, get_feature_report, read_button_states, read_data,
+    read_encoder_input, read_lcd_input, send_feature_report, write_data,
+};
 
+/// Image processing functions
+pub mod images;
 /// Various information about Stream Deck devices
 pub mod info;
 /// Utility functions for working with Stream Deck devices
 pub mod util;
-/// Image processing functions
-pub mod images;
 
 /// Async Stream Deck
 #[cfg(feature = "async")]
@@ -50,7 +53,8 @@ pub fn refresh_device_list(hidapi: &mut HidApi) -> HidResult<()> {
 ///
 /// **WARNING:** To refresh the list, use [refresh_device_list]
 pub fn list_devices(hidapi: &HidApi) -> Vec<(Kind, String)> {
-    hidapi.device_list()
+    hidapi
+        .device_list()
         .filter_map(|d| {
             if d.vendor_id() != ELGATO_VENDOR_ID {
                 return None;
@@ -61,10 +65,7 @@ pub fn list_devices(hidapi: &HidApi) -> Vec<(Kind, String)> {
                     return None;
                 }
 
-                Some((
-                    Kind::from_pid(d.product_id())?,
-                    serial.to_string()
-                ))
+                Some((Kind::from_pid(d.product_id())?, serial.to_string()))
             } else {
                 None
             }
@@ -100,11 +101,7 @@ pub enum StreamDeckInput {
 impl StreamDeckInput {
     /// Checks if there's data received or not
     pub fn is_empty(&self) -> bool {
-        if let StreamDeckInput::NoData = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, StreamDeckInput::NoData)
     }
 }
 
@@ -119,13 +116,14 @@ pub struct StreamDeck {
 /// Static functions of the struct
 impl StreamDeck {
     /// Attempts to connect to the device
-    pub fn connect(hidapi: &HidApi, kind: Kind, serial: &str) -> Result<StreamDeck, StreamDeckError> {
+    pub fn connect(
+        hidapi: &HidApi,
+        kind: Kind,
+        serial: &str,
+    ) -> Result<StreamDeck, StreamDeckError> {
         let device = hidapi.open_serial(ELGATO_VENDOR_ID, kind.product_id(), serial)?;
 
-        Ok(StreamDeck {
-            kind,
-            device
-        })
+        Ok(StreamDeck { kind, device })
     }
 }
 
@@ -138,12 +136,18 @@ impl StreamDeck {
 
     /// Returns manufacturer string of the device
     pub fn manufacturer(&self) -> Result<String, StreamDeckError> {
-        Ok(self.device.get_manufacturer_string()?.unwrap_or_else(|| "Unknown".to_string()))
+        Ok(self
+            .device
+            .get_manufacturer_string()?
+            .unwrap_or_else(|| "Unknown".to_string()))
     }
 
     /// Returns product string of the device
     pub fn product(&self) -> Result<String, StreamDeckError> {
-        Ok(self.device.get_product_string()?.unwrap_or_else(|| "Unknown".to_string()))
+        Ok(self
+            .device
+            .get_product_string()?
+            .unwrap_or_else(|| "Unknown".to_string()))
     }
 
     /// Returns serial number of the device
@@ -182,13 +186,16 @@ impl StreamDeck {
     }
 
     /// Reads all possible input from Stream Deck device
-    pub fn read_input(&self, timeout: Option<Duration>) -> Result<StreamDeckInput, StreamDeckError> {
+    pub fn read_input(
+        &self,
+        timeout: Option<Duration>,
+    ) -> Result<StreamDeckInput, StreamDeckError> {
         match &self.kind {
             Kind::Plus => {
                 let data = read_data(
                     &self.device,
                     14.max(5 + self.kind.encoder_count() as usize),
-                    timeout
+                    timeout,
                 )?;
 
                 if data[0] == 0 {
@@ -196,43 +203,33 @@ impl StreamDeck {
                 }
 
                 match &data[1] {
-                    0x0 => Ok(StreamDeckInput::ButtonStateChange(
-                        read_button_states(&self.kind, &data)
-                    )),
+                    0x0 => Ok(StreamDeckInput::ButtonStateChange(read_button_states(
+                        &self.kind, &data,
+                    ))),
 
-                    0x2 => Ok(
-                        read_lcd_input(&data)?
-                    ),
+                    0x2 => Ok(read_lcd_input(&data)?),
 
-                    0x3 => Ok(
-                        read_encoder_input(&self.kind, &data)?
-                    ),
+                    0x3 => Ok(read_encoder_input(&self.kind, &data)?),
 
-                    _ => Err(StreamDeckError::BadData)
+                    _ => Err(StreamDeckError::BadData),
                 }
             }
 
             _ => {
                 let data = match self.kind {
-                    Kind::Original | Kind::Mini | Kind::MiniMk2 => read_data(
-                        &self.device,
-                        1 + self.kind.key_count() as usize,
-                        timeout
-                    ),
-                    _ => read_data(
-                        &self.device,
-                        4 + self.kind.key_count() as usize,
-                        timeout
-                    )
+                    Kind::Original | Kind::Mini | Kind::MiniMk2 => {
+                        read_data(&self.device, 1 + self.kind.key_count() as usize, timeout)
+                    }
+                    _ => read_data(&self.device, 4 + self.kind.key_count() as usize, timeout),
                 }?;
 
                 if data[0] == 0 {
                     return Ok(StreamDeckInput::NoData);
                 }
 
-                Ok(StreamDeckInput::ButtonStateChange(
-                    read_button_states(&self.kind, &data)
-                ))
+                Ok(StreamDeckInput::ButtonStateChange(read_button_states(
+                    &self.kind, &data,
+                )))
             }
         }
     }
@@ -264,14 +261,7 @@ impl StreamDeck {
 
         match self.kind {
             Kind::Original | Kind::Mini | Kind::MiniMk2 => {
-                let mut buf = vec![
-                    0x05,
-                    0x55,
-                    0xaa,
-                    0xd1,
-                    0x01,
-                    percent
-                ];
+                let mut buf = vec![0x05, 0x55, 0xaa, 0xd1, 0x01, percent];
 
                 buf.extend(vec![0u8; 11]);
 
@@ -279,11 +269,7 @@ impl StreamDeck {
             }
 
             _ => {
-                let mut buf = vec![
-                    0x03,
-                    0x08,
-                    percent
-                ];
+                let mut buf = vec![0x03, 0x08, percent];
 
                 buf.extend(vec![0u8; 29]);
 
@@ -310,17 +296,17 @@ impl StreamDeck {
 
         let image_report_length = match self.kind {
             Kind::Original => 8191,
-            _ => 1024
+            _ => 1024,
         };
 
         let image_report_header_length = match self.kind {
             Kind::Original | Kind::Mini | Kind::MiniMk2 => 16,
-            _ => 8
+            _ => 8,
         };
 
         let image_report_payload_length = match self.kind {
             Kind::Original => image_data.len() / 2,
-            _ => image_report_length - image_report_header_length
+            _ => image_report_length - image_report_header_length,
         };
 
         let mut page_number = 0;
@@ -379,10 +365,10 @@ impl StreamDeck {
                     (this_length >> 8) as u8,
                     (page_number & 0xff) as u8,
                     (page_number >> 8) as u8,
-                ]
+                ],
             };
 
-            buf.extend(&image_data[bytes_sent .. bytes_sent + this_length]);
+            buf.extend(&image_data[bytes_sent..bytes_sent + this_length]);
 
             // Adding padding
             buf.extend(vec![0u8; image_report_length - buf.len()]);
@@ -398,11 +384,9 @@ impl StreamDeck {
 
     /// Writes image data to Stream Deck device's lcd strip/screen
     pub fn write_lcd(&self, x: u16, y: u16, rect: &ImageRect) -> Result<(), StreamDeckError> {
-        if !match self.kind {
-            Kind::Plus => true,
-            _ => false
-        } {
-            return Err(StreamDeckError::UnsupportedOperation)
+        match self.kind {
+            Kind::Plus => {}
+            _ => return Err(StreamDeckError::UnsupportedOperation),
         }
 
         let image_report_length = 1024;
@@ -430,15 +414,19 @@ impl StreamDeck {
                 (rect.w >> 8) as u8,
                 (rect.h & 0xff) as u8,
                 (rect.h >> 8) as u8,
-                if bytes_remaining <= image_report_payload_length { 1 } else { 0 },
+                if bytes_remaining <= image_report_payload_length {
+                    1
+                } else {
+                    0
+                },
                 (page_number & 0xff) as u8,
                 (page_number >> 8) as u8,
                 (this_length & 0xff) as u8,
                 (this_length >> 8) as u8,
-                0
+                0,
             ];
 
-            buf.extend(&rect.data[bytes_sent .. bytes_sent + this_length]);
+            buf.extend(&rect.data[bytes_sent..bytes_sent + this_length]);
 
             // Adding padding
             buf.extend(vec![0u8; image_report_length - buf.len()]);
