@@ -27,7 +27,7 @@ pub fn refresh_device_list_async(hidapi: &mut HidApi) -> HidResult<()> {
 /// **WARNING:** To refresh the list, use [refresh_device_list]
 pub fn list_devices_async(hidapi: &HidApi) -> Vec<(Kind, String)> {
     block_in_place(move || {
-        list_devices(&hidapi)
+        list_devices(hidapi)
     })
 }
 
@@ -63,36 +63,36 @@ impl AsyncStreamDeck {
     pub async fn manufacturer(&self) -> Result<String, StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.manufacturer()
-        })?)
+        })
     }
 
     /// Returns product string of the device
     pub async fn product(&self) -> Result<String, StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.product()
-        })?)
+        })
     }
 
     /// Returns serial number of the device
     pub async fn serial_number(&self) -> Result<String, StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.serial_number()
-        })?)
+        })
     }
 
     /// Returns firmware version of the StreamDeck
     pub async fn firmware_version(&self) -> Result<String, StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.firmware_version()
-        })?)
+        })
     }
 
     /// Reads button states, awaits until there's data.
@@ -128,36 +128,36 @@ impl AsyncStreamDeck {
     pub async fn reset(&self) -> Result<(), StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.reset()
-        })?)
+        })
     }
 
     /// Sets brightness of the device, value range is 0 - 100
     pub async fn set_brightness(&self, percent: u8) -> Result<(), StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.set_brightness(percent)
-        })?)
+        })
     }
 
     /// Writes image data to Stream Deck device, needs to accept Arc for image data since it runs a blocking thread under the hood
     pub async fn write_image(&self, key: u8, image_data: &[u8]) -> Result<(), StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.write_image(key, image_data)
-        })?)
+        })
     }
 
     /// Writes image data to Stream Deck device's lcd strip/screen, needs to accept Arc for image data since it runs a blocking thread under the hood
     pub async fn write_lcd(&self, x: u16, y: u16, rect: Arc<ImageRect>) -> Result<(), StreamDeckError> {
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.write_lcd(x, y, rect.as_ref())
-        })?)
+        })
     }
 
     /// Writes image data to Stream Deck device
@@ -165,9 +165,9 @@ impl AsyncStreamDeck {
         let image = self.kind.blank_image();
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.write_image(key, &image)
-        })?)
+        })
     }
 
     /// Sets specified button's image
@@ -176,9 +176,9 @@ impl AsyncStreamDeck {
 
         let device = self.device.clone();
         let lock = device.lock().await;
-        Ok(block_in_place(move || {
+        block_in_place(move || {
             lock.write_image(key, &image)
-        })?)
+        })
     }
 }
 

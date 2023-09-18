@@ -454,7 +454,7 @@ impl StreamDeck {
 
     /// Sets button's image to blank
     pub fn clear_button_image(&self, key: u8) -> Result<(), StreamDeckError> {
-        Ok(self.write_image(key, &self.kind.blank_image())?)
+        self.write_image(key, &self.kind.blank_image())
     }
 
     /// Sets specified button's image
