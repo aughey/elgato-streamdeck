@@ -460,7 +460,7 @@ impl StreamDeck {
     /// Sets specified button's image
     pub fn set_button_image(&self, key: u8, image: DynamicImage) -> Result<(), StreamDeckError> {
         let image_data = convert_image(self.kind, image)?;
-        Ok(self.write_image(key, &image_data)?)
+        self.write_image(key, &image_data)
     }
 }
 
