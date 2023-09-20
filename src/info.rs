@@ -139,6 +139,23 @@ impl Kind {
         (self.row_count(), self.column_count())
     }
 
+    /// Returns the name of the Stream Deck kind
+    pub fn to_string(&self) -> String {
+        match self {
+            Kind::Original => "Original",
+            Kind::OriginalV2 => "OriginalV2",
+            Kind::Mini => "Mini",
+            Kind::Xl => "Xl",
+            Kind::XlV2 => "XlV2",
+            Kind::Mk2 => "Mk2",
+            Kind::MiniMk2 => "MiniMk2",
+            Kind::Pedal => "Pedal",
+            Kind::Plus => "Plus",
+           
+        }
+        .to_string()
+    }
+
     /// Image format used by the Stream Deck kind
     pub fn key_image_format(&self) -> ImageFormat {
         match self {
