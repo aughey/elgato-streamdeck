@@ -1,10 +1,14 @@
+use crate::{Kind, StreamDeckError, StreamDeckInput};
+use hidapi::{HidDevice, HidError};
 use std::str::{from_utf8, Utf8Error};
 use std::time::Duration;
-use hidapi::{HidDevice, HidError};
-use crate::{Kind, StreamDeckError, StreamDeckInput};
 
 /// Performs get_feature_report on [HidDevice]
-pub fn get_feature_report(device: &HidDevice, report_id: u8, length: usize) -> Result<Vec<u8>, HidError> {
+pub fn get_feature_report(
+    device: &HidDevice,
+    report_id: u8,
+    length: usize,
+) -> Result<Vec<u8>, HidError> {
     let mut buff = vec![0u8; length];
 
     // Inserting report id byte
@@ -22,14 +26,18 @@ pub fn send_feature_report(device: &HidDevice, payload: &[u8]) -> Result<(), Hid
 }
 
 /// Reads data from [HidDevice]. Blocking mode is used if timeout is specified
-pub fn read_data(device: &HidDevice, length: usize, timeout: Option<Duration>) -> Result<Vec<u8>, HidError> {
+pub fn read_data(
+    device: &HidDevice,
+    length: usize,
+    timeout: Option<Duration>,
+) -> Result<Vec<u8>, HidError> {
     device.set_blocking_mode(timeout.is_some())?;
 
     let mut buf = vec![0u8; length];
 
     match timeout {
         Some(timeout) => device.read_timeout(buf.as_mut_slice(), timeout.as_millis() as i32),
-        None => device.read(buf.as_mut_slice())
+        None => device.read(buf.as_mut_slice()),
     }?;
 
     Ok(buf)
@@ -54,7 +62,7 @@ pub fn flip_key_index(kind: &Kind, key: u8) -> u8 {
 /// Reads button states, empty vector if no data
 pub fn read_button_states(kind: &Kind, states: &[u8]) -> Vec<bool> {
     if states[0] == 0 {
-        return vec![]
+        return vec![];
     }
 
     match kind {
@@ -70,17 +78,9 @@ pub fn read_button_states(kind: &Kind, states: &[u8]) -> Vec<bool> {
             bools
         }
 
-        Kind::Mini | Kind::MiniMk2 => {
-            states[1..].iter()
-                .map(|s| *s != 0)
-                .collect()
-        }
+        Kind::Mini | Kind::MiniMk2 => states[1..].iter().map(|s| *s != 0).collect(),
 
-        _ => {
-            states[4..].iter()
-                .map(|s| *s != 0)
-                .collect()
-        }
+        _ => states[4..].iter().map(|s| *s != 0).collect(),
     }
 }
 
@@ -99,11 +99,11 @@ pub fn read_lcd_input(data: &[u8]) -> Result<StreamDeckInput, StreamDeckError> {
 
             Ok(StreamDeckInput::TouchScreenSwipe(
                 (start_x, start_y),
-                (end_x, end_y)
+                (end_x, end_y),
             ))
         }
 
-        _ => Err(StreamDeckError::BadData)
+        _ => Err(StreamDeckError::BadData),
     }
 }
 
@@ -111,15 +111,17 @@ pub fn read_lcd_input(data: &[u8]) -> Result<StreamDeckInput, StreamDeckError> {
 pub fn read_encoder_input(kind: &Kind, data: &[u8]) -> Result<StreamDeckInput, StreamDeckError> {
     match &data[4] {
         0x0 => Ok(StreamDeckInput::EncoderStateChange(
-            data[5..5 + kind.encoder_count() as usize].iter()
+            data[5..5 + kind.encoder_count() as usize]
+                .iter()
                 .map(|s| *s != 0)
-                .collect()
+                .collect(),
         )),
 
         0x1 => Ok(StreamDeckInput::EncoderTwist(
-            data[5..5 + kind.encoder_count() as usize].iter()
+            data[5..5 + kind.encoder_count() as usize]
+                .iter()
                 .map(|s| i8::from_le_bytes([*s]))
-                .collect()
+                .collect(),
         )),
 
         _ => Err(StreamDeckError::BadData),

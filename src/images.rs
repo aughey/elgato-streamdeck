@@ -104,8 +104,6 @@ impl ImageRect {
     #[cfg(feature = "async")]
     #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
     pub fn from_image_async(image: DynamicImage) -> Result<ImageRect, StreamDeckError> {
-        tokio::task::block_in_place(move || {
-            ImageRect::from_image(image)
-        })
+        tokio::task::block_in_place(move || ImageRect::from_image(image))
     }
 }
